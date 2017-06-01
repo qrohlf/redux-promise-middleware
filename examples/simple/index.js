@@ -22,7 +22,8 @@ const initialize = () => {
     if (state.isPending) {
       mount.innerHTML = 'Loading post...';
     } else if (state.body) {
-      mount.innerHTML = state.body;
+      throw Error('error in render()');
+      mount.innerHTML = state.body; // eslint-disable-line
     }
   };
 
