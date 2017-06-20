@@ -256,7 +256,7 @@ describe('Redux Promise Middleware:', () => {
      * (for example, errors in connected component renders()), don't change it
      * to a promise rejection
      */
-    it('does not send a rejected action if disaptch fails', done => {
+    it('does not send a rejected action if dispatch fails', done => {
       const fulfilledType = `${promiseAction.type}_FULFILLED`;
       store = makeStore(undefined, (state, action) => {
         if (action.type === fulfilledType) {
@@ -279,6 +279,36 @@ describe('Redux Promise Middleware:', () => {
         }
       ).then(done, done);
     });
+
+    /**
+     * If the dispatch() call throws an error, there should be an
+     * unhandledrejection event thrown for ease of debugging.
+     * Note that this is mutually incompatible with the above
+     * test case.
+     */
+
+    it('triggers the window unhandledrejection event if dispatch fails', done => {
+      const fulfilledType = `${promiseAction.type}_FULFILLED`;
+      store = makeStore(undefined, (state, action) => {
+        if (action.type === fulfilledType) {
+          throw new Error();
+        } else {
+          return null;
+        }
+      });
+
+      let unhandledrejectionFired = false;
+      const recordUnhandled = () => { unhandledrejectionFired = true; };
+      process.on('unhandledrejection', recordUnhandled);
+      const expectUnhandledRejection = () => expect(unhandledrejectionFired).to.be.true;
+      const removeListener = process.removeListener('unhandledrejection', recordUnhandled);
+
+      store.dispatch(promiseAction).then(
+        expectUnhandledRejection,
+        expectUnhandledRejection
+      ).then(removeListener, removeListener).then(done, done);
+    });
+
 
     /**
      * This test ensures the original promise object is not mutated. In the case
