@@ -85,11 +85,11 @@ describe('Redux Promise Middleware:', () => {
   /*
    * Function for creating a dumb store using fake middleware stack
    */
-  const makeStore = (config) => applyMiddleware(
+  const makeStore = (config, reducer = () => null) => applyMiddleware(
     ref => next => firstMiddlewareThunk.call(firstMiddlewareThunk, ref, next),
     promiseMiddleware(config),
     () => next => lastMiddlewareModifies.call(lastMiddlewareModifies, next)
-  )(createStore)(() => null);
+  )(createStore)(reducer);
 
   beforeEach(() => {
     store = makeStore();
@@ -249,6 +249,31 @@ describe('Redux Promise Middleware:', () => {
       };
 
       fulfilledAction = defaultFulfilledAction;
+    });
+
+    /**
+     * If the dispatch() call throws an error, there should be an
+     * unhandledrejection event thrown for ease of debugging.
+     */
+    it('triggers the window unhandledrejection event if dispatch fails', done => {
+      const fulfilledType = `${promiseAction.type}_FULFILLED`;
+      store = makeStore(undefined, (state, action) => {
+        if (action.type === fulfilledType) {
+          throw new Error();
+        } else {
+          return null;
+        }
+      });
+
+      const onUnhandled = () => {
+        expect(true).to.be.true;
+        process.removeListener('unhandledRejection', onUnhandled);
+        done();
+      };
+      process.on('unhandledRejection', onUnhandled);
+
+      store.dispatch(promiseAction)
+        .then(() => expect(false).to.be.true);
     });
 
     /**
